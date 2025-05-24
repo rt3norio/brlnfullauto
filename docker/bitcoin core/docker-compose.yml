@@ -1,0 +1,52 @@
+services:
+  bitcoin:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: bitcoin-node
+    volumes:
+      - ./bitcoin-data:/home/bitcoin/.bitcoin
+    ports:
+      - "8332:8332"  # RPC port
+      - "8333:8333"  # P2P port
+      - "28332:28332"  # ZMQ raw block port
+      - "28333:28333"  # ZMQ raw transaction port
+    restart: unless-stopped
+    # Run as root initially to set permissions, then use gosu to switch to bitcoin user
+    user: root
+    command: >
+      bash -c "
+        mkdir -p /home/bitcoin/.bitcoin &&
+        echo 'prune=550' > /home/bitcoin/.bitcoin/bitcoin.conf &&
+        echo 'rpcallowip=0.0.0.0/0' >> /home/bitcoin/.bitcoin/bitcoin.conf &&
+        echo 'rpcbind=0.0.0.0' >> /home/bitcoin/.bitcoin/bitcoin.conf &&
+        echo 'rpcauth=bitcoinrpc:fc90dada2e513b1e7b454787d8d2d67a$18819777a17262673964f035a0a17735504801a52808c47726e31890ab89f1d5' >> /home/bitcoin/.bitcoin/bitcoin.conf &&
+        echo 'zmqpubrawblock=tcp://0.0.0.0:28332' >> /home/bitcoin/.bitcoin/bitcoin.conf &&
+        echo 'zmqpubrawtx=tcp://0.0.0.0:28333' >> /home/bitcoin/.bitcoin/bitcoin.conf &&
+        chown -R bitcoin:bitcoin /home/bitcoin/.bitcoin &&
+        gosu bitcoin bitcoind -printtoconsole
+      "
+    networks:
+      - bitcoin-network
+
+  # Add a service to test RPC credentials
+  bitcoin-cli:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: bitcoin-cli
+    depends_on:
+      - bitcoin
+    command: >
+      bash -c "
+        # Wait for bitcoind to start
+        sleep 10 &&
+        # Test RPC connection
+        bitcoin-cli -rpcconnect=bitcoin -rpcuser=bitcoinrpc -rpcpassword=secure_password getblockchaininfo
+      "
+    networks:
+      - bitcoin-network
+
+networks:
+  bitcoin-network:
+    driver: bridge

@@ -1,0 +1,36 @@
+services:
+  lnd:
+    image: lightninglabs/lnd:v0.19.0-beta
+    container_name: lnd
+    command:
+      - "--bitcoin.node=bitcoind"
+      - "--bitcoin.mainnet"
+      # If your bitcoin node is on testnet, uncomment the line below
+      # - "--bitcoin.testnet"
+      # If your bitcoin node is on simnet, uncomment the line below and comment out bitcoin.testnet if it was uncommented
+      # - "--bitcoin.simnet"
+      # If your bitcoin node is on regtest, comment out mainnet and uncomment the line below
+      # - "--bitcoin.regtest"
+      - "--bitcoind.rpchost=172.21.0.1:8332"
+      - "--bitcoind.rpcuser=bitcoinrpc"
+      - "--bitcoind.rpcpass=secure_password"
+      - "--bitcoind.zmqpubrawblock=tcp://172.21.0.1:28332" # ZMQ raw block notifications
+      - "--bitcoind.zmqpubrawtx=tcp://172.21.0.1:28333"   # ZMQ raw transaction notifications
+      - "--wallet-unlock-password-file=/root/.lnd/wallet.unlock"
+      # - "--rpclisten=0.0.0.0:10009"
+      # - "--restlisten=0.0.0.0:8080"
+      # - "--externalip=127.0.0.1"
+      - "--debuglevel=debug"
+    ports:
+      - "10009:10009" # rpc
+      - "8080:8080"   # rest
+      - "9735:9735"   # p2p
+    volumes:
+      - "./lnd_data:/root/.lnd" # Changed to local bind mount
+    restart: unless-stopped
+    networks:
+      - lnd-network # Connect to the same network as Bitcoin Core
+
+networks:
+  lnd-network:
+    driver: bridge

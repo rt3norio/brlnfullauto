@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  tor:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: tor_service
+    ports:
+      # Mapping SOCKS port 9050 from container to host
+      - "127.0.0.1:9050:9050"
+      # Mapping Control port 9051 from container to host
+      - "127.0.0.1:9051:9051"
+    # Optional: If you want Tor data to persist across container restarts,
+    # you can mount a volume for /var/lib/tor.
+    # Make sure the host directory exists and has appropriate permissions,
+    # or use a named volume.
+    volumes:
+      - ./tor_data:/var/lib/tor # Example: host path mapping
+    #   - tor_data_volume:/var/lib/tor # Example: named volume
+    restart: unless-stopped
+    # Optional: Add healthcheck to monitor Tor's status
+    # This checks if Tor is listening on the SOCKS port.
+    healthcheck:
+      test: ["CMD", "bash", "-c", "ss -Htnlp | grep -q ':9050'"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s # Give Tor some time to start up
